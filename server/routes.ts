@@ -52,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/register", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
@@ -60,12 +60,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Hash password
-      const passwordHash = await bcrypt.hash(userData.password, 10);
-      
+      const passwordHash = await bcrypt.hash(userData.passwordHash, 10);
+
       const user = await storage.createUser({
         ...userData,
-        passwordHash,
-        password: undefined
+        passwordHash
       });
 
       // Auto-add to gender-based group if organization context provided
