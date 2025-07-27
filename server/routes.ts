@@ -19,17 +19,22 @@ declare module 'express-session' {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Session configuration
+  // Session configuration with MemoryStore
+  const MemoryStoreSession = MemoryStore(session);
+
   app.use(session({
     secret: process.env.SESSION_SECRET || 'sports-booking-secret-key',
+    store: new MemoryStoreSession({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    }),
     resave: false,
     saveUninitialized: false,
-    rolling: true, // Reset session expiry on each request
+    rolling: false, // Don't reset session expiry on each request
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      sameSite: 'lax' // Changed to lax for better compatibility
     },
     name: 'sportbook.sid' // Custom session name
   }));
