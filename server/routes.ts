@@ -48,6 +48,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
   };
 
+  // Route to make existing user an app admin
+  app.post("/api/setup/user-to-admin", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Find the user
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if this user is already an app admin
+      const existingAdmins = await storage.getAppAdmins();
+      const isAlreadyAdmin = existingAdmins.some(admin => admin.email === user.email);
+
+      if (isAlreadyAdmin) {
+        return res.status(400).json({ message: "User is already an app admin" });
+      }
+
+      // Create app admin record using user data
+      const admin = await storage.createAppAdmin({
+        name: user.fullName,
+        email: user.email,
+        passwordHash: user.passwordHash,
+        phone: user.phone
+      });
+
+      res.json({
+        message: "User promoted to app admin successfully",
+        admin: {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        message: "Failed to promote user to app admin",
+        error: error.message
+      });
+    }
+  });
+
   // Setup route for creating first app admin (one-time use)
   app.post("/api/setup/app-admin", async (req, res) => {
     try {
