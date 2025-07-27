@@ -50,17 +50,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// DeviceToken table for multi-device FCM support
-export const deviceTokens = pgTable("device_tokens", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  fcmToken: text("fcm_token").notNull(),
-  deviceType: varchar("device_type", { length: 50 }), // 'Android', 'iOS', 'Web'
-  deviceName: varchar("device_name", { length: 100 }), // 'iPhone 13', 'Macbook Chrome'
-  lastUsedAt: timestamp("last_used_at").defaultNow(),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+
 
 // Organization Admins
 export const orgAdmins = pgTable("org_admins", {
