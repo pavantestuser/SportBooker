@@ -86,6 +86,24 @@ export interface IStorage {
   getPaymentByBooking(bookingId: string): Promise<Payment | undefined>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePaymentStatus(id: string, status: 'pending' | 'paid' | 'failed', transactionId?: string): Promise<void>;
+
+  // Search and Discovery
+  performAdvancedSearch(params: {
+    query?: string;
+    city?: string;
+    sport?: string;
+    date?: string;
+    timeSlot?: string;
+    maxDistance?: number;
+    priceRange?: string;
+    userId: string;
+  }): Promise<any[]>;
+  findNearbyCourts(latitude: number, longitude: number, radius: number): Promise<any[]>;
+  filterCourts(params: {
+    tags?: string[];
+    city?: string;
+    availableOnly?: boolean;
+  }): Promise<Court[]>;
 }
 
 export class DatabaseStorage implements IStorage {
