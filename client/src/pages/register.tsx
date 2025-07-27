@@ -32,10 +32,10 @@ export default function Register() {
     },
     onSuccess: (data) => {
       toast({
-        title: "Registration Successful",
-        description: "Your account has been created. Please sign in to continue.",
+        title: "Registration Successful! 🎉",
+        description: "Account created! Let's set up your location to find nearby courts.",
       });
-      setLocation("/");
+      setLocation("/location-setup");
     },
     onError: (error: any) => {
       toast({
