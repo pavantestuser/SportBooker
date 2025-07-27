@@ -10,6 +10,7 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'staff', 'member']);
 export const bookingStatusEnum = pgEnum('booking_status', ['booked', 'cancelled', 'completed']);
 export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'paid', 'failed']);
 export const couponTypeEnum = pgEnum('coupon_type', ['fixed_amount', 'percentage', 'free_booking', 'conditional']);
+export const restrictionTypeEnum = pgEnum('restriction_type', ['group_only', 'one_per_day', 'full_court', 'combinable']);
 
 // App Admin table
 export const appAdmins = pgTable("app_admins", {
@@ -154,6 +155,9 @@ export const slots = pgTable("slots", {
   endTime: text("end_time").notNull(), // HH:MM format
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   maxBookings: integer("max_bookings").default(1),
+  restrictedToOncePerDay: boolean("restricted_to_once_per_day").default(false),
+  allowFullCourtBooking: boolean("allow_full_court_booking").default(false),
+  maxCombinableSlots: integer("max_combinable_slots").default(1),
   restrictionId: varchar("restriction_id").references(() => slotRestrictions.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
