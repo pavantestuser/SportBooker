@@ -21,17 +21,7 @@ export const appAdmins = pgTable("app_admins", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// App Admin Permissions table
-export const appAdminPermissions = pgTable("app_admin_permissions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  adminId: varchar("admin_id").references(() => appAdmins.id, { onDelete: "cascade" }).notNull(),
-  canCreateAdmin: boolean("can_create_admin").default(false),
-  canManageOrganizations: boolean("can_manage_organizations").default(false),
-  canAccessSystemLogs: boolean("can_access_system_logs").default(false),
-  canManageCoupons: boolean("can_manage_coupons").default(false),
-  canPromoteUsers: boolean("can_promote_users").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+
 
 // Organizations table
 export const organizations = pgTable("organizations", {
