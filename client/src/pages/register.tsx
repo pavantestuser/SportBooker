@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Dumbbell, UserPlus } from "lucide-react";
+import { Dumbbell, UserPlus, Navigation, MapPin } from "lucide-react";
 
 export default function Register() {
   const [, setLocation] = useLocation();
