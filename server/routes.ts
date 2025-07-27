@@ -48,6 +48,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
   };
 
+  // Setup route for creating first app admin (one-time use)
+  app.post("/api/setup/app-admin", async (req, res) => {
+    try {
+      const { name, email, password, phone } = req.body;
+
+      // Check if any app admin already exists
+      const existingAdmins = await storage.getAppAdmins?.();
+      if (existingAdmins && existingAdmins.length > 0) {
+        return res.status(400).json({
+          message: "Setup already completed. App admin exists."
+        });
+      }
+
+      // Validate input
+      if (!name || !email || !password) {
+        return res.status(400).json({
+          message: "Name, email, and password are required"
+        });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Create app admin
+      const admin = await storage.createAppAdmin({
+        name,
+        email,
+        passwordHash,
+        phone
+      });
+
+      res.json({
+        message: "App admin created successfully",
+        admin: {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        message: "Failed to create app admin",
+        error: error.message
+      });
+    }
+  });
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV
+    });
+  });
+
   // Auth routes
   app.post("/api/register", async (req, res) => {
     try {
