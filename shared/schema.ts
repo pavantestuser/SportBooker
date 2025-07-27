@@ -293,5 +293,3 @@ export type Slot = typeof slots.$inferSelect;
 export type Coupon = typeof coupons.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
-export type AppAdminPermission = typeof appAdminPermissions.$inferSelect;
-export type DeviceToken = typeof deviceTokens.$inferSelect;
