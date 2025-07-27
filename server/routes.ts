@@ -184,10 +184,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Auto-add to gender-based group if organization context provided
       if (req.body.orgId && userData.gender && userData.gender !== 'prefer_not_to_say') {
         const genderGroups = await storage.getGroupsByOrg(req.body.orgId);
-        const genderGroup = genderGroups.find(g => 
+        const genderGroup = genderGroups.find(g =>
           g.name.toLowerCase().includes(userData.gender?.toLowerCase() || '')
         );
-        
+
         if (genderGroup) {
           await storage.addUserToGroup({
             userId: user.id,
@@ -196,7 +196,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ message: "User registered successfully", userId: user.id });
+      // Auto-login the user after registration
+      const roles = await storage.getUserRoles(user.id);
+      req.session.userId = user.id;
+      req.session.currentRole = roles[0]?.role || 'user';
+      req.session.currentOrgId = roles[0]?.orgId;
+
+      // Save session and respond
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error after registration:', err);
+          return res.json({ message: "User registered successfully but login failed", userId: user.id });
+        }
+
+        res.json({
+          message: "User registered successfully",
+          userId: user.id,
+          user: { id: user.id, username: user.username, fullName: user.fullName, email: user.email },
+          autoLogin: true
+        });
+      });
     } catch (error) {
       res.status(400).json({ message: "Registration failed", error: error.message });
     }
