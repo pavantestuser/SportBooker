@@ -241,19 +241,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.currentRole = roles[0]?.role || 'user';
       req.session.currentOrgId = roles[0]?.orgId;
 
-      // Explicitly save session
-      req.session.save((err) => {
-        if (err) {
-          console.error('Session save error:', err);
-          return res.status(500).json({ message: "Session save failed" });
-        }
+      console.log('Login successful - Session set:', {
+        sessionId: req.sessionID,
+        userId: req.session.userId,
+        currentRole: req.session.currentRole
+      });
 
-        res.json({
-          message: "Login successful",
-          user: { id: user.id, username: user.username, fullName: user.fullName, email: user.email },
-          roles,
-          currentRole: req.session.currentRole
-        });
+      res.json({
+        message: "Login successful",
+        user: { id: user.id, username: user.username, fullName: user.fullName, email: user.email },
+        roles,
+        currentRole: req.session.currentRole
       });
     } catch (error) {
       res.status(400).json({ message: "Login failed", error: error.message });
