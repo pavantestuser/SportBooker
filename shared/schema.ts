@@ -14,7 +14,7 @@ export const couponTypeEnum = pgEnum('coupon_type', ['fixed_amount', 'percentage
 // App Admin table
 export const appAdmins = pgTable("app_admins", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).unique(),
+  userId: varchar("user_id"), // Will add FK constraint after users table is defined
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
