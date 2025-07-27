@@ -133,6 +133,14 @@ export class DatabaseStorage implements IStorage {
     await db.update(users).set({ fcmToken }).where(eq(users.id, userId));
   }
 
+  async updateUserLocation(userId: string, location: { city: string; latitude: string; longitude: string }): Promise<void> {
+    await db.update(users).set({
+      city: location.city,
+      latitude: location.latitude,
+      longitude: location.longitude
+    }).where(eq(users.id, userId));
+  }
+
   // App Admin management
   async getAppAdmin(id: string): Promise<AppAdmin | undefined> {
     const [admin] = await db.select().from(appAdmins).where(eq(appAdmins.id, id));
