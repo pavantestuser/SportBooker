@@ -1,17 +1,16 @@
 import {
   appAdmins, organizations, users, orgAdmins, staff, userOrganizationMap,
   groups, userGroupMap, sections, facilities, courts, slotRestrictions,
-  slots, coupons, bookings, payments, appAdminPermissions, deviceTokens,
+  slots, coupons, bookings, payments,
   type InsertAppAdmin, type InsertOrganization, type InsertUser,
   type InsertOrgAdmin, type InsertStaff, type InsertUserOrganizationMap,
   type InsertGroup, type InsertUserGroupMap, type InsertSection,
   type InsertFacility, type InsertCourt, type InsertSlotRestriction,
   type InsertSlot, type InsertCoupon, type InsertBooking, type InsertPayment,
-  type InsertAppAdminPermission, type InsertDeviceToken,
   type AppAdmin, type Organization, type User, type OrgAdmin, type Staff,
   type UserOrganizationMap, type Group, type UserGroupMap, type Section,
   type Facility, type Court, type SlotRestriction, type Slot, type Coupon,
-  type Booking, type Payment, type AppAdminPermission, type DeviceToken
+  type Booking, type Payment
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, inArray, desc, asc } from "drizzle-orm";
