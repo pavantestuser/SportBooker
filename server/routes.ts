@@ -401,6 +401,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notifications
+  app.post("/api/notifications/send", requireAuth, requireRole(['app_admin', 'org_admin']), async (req, res) => {
+    try {
+      const { userIds, title, body, data } = req.body;
+
+      const notifications = [];
+      for (const userId of userIds) {
+        const user = await storage.getUser(userId);
+        if (user?.fcmToken) {
+          await firebaseService.sendNotification(user.fcmToken, {
+            title,
+            body,
+            data: data || {}
+          });
+          notifications.push({ userId, status: 'sent' });
+        } else {
+          notifications.push({ userId, status: 'no_token' });
+        }
+      }
+
+      res.json({ message: "Notifications processed", results: notifications });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send notifications", error: error.message });
+    }
+  });
+
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      // In a real app, this would fetch user's notification history from database
+      const notifications = [
+        {
+          id: "1",
+          title: "Booking Confirmed",
+          body: "Your court booking for today at 6:00 PM is confirmed.",
+          timestamp: new Date().toISOString(),
+          read: false,
+          type: "booking_confirmed"
+        },
+        {
+          id: "2",
+          title: "New Facility Available",
+          body: "Check out the new tennis courts near your location!",
+          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          read: true,
+          type: "facility_update"
+        }
+      ];
+
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Enhanced booking with restrictions
+  app.post("/api/bookings/advanced", requireAuth, async (req, res) => {
+    try {
+      const { slotId, isFullCourt, consecutiveSlots } = req.body;
+
+      const bookingRequest = {
+        userId: req.session.userId!,
+        slotId,
+        isFullCourt: isFullCourt || false,
+        consecutiveSlots: consecutiveSlots || [],
+        requestedDate: new Date().toISOString().split('T')[0]
+      };
+
+      const { enhancedBookingService } = await import('./services/enhanced-booking');
+      const booking = await enhancedBookingService.processAdvancedBooking(bookingRequest);
+
+      res.json({ booking, message: "Advanced booking created successfully" });
+    } catch (error) {
+      res.status(400).json({ message: "Advanced booking failed", error: error.message });
+    }
+  });
+
+  // Check booking eligibility
+  app.post("/api/bookings/check-eligibility", requireAuth, async (req, res) => {
+    try {
+      const { slotId, isFullCourt, consecutiveSlots } = req.body;
+
+      const bookingRequest = {
+        userId: req.session.userId!,
+        slotId,
+        isFullCourt: isFullCourt || false,
+        consecutiveSlots: consecutiveSlots || [],
+        requestedDate: new Date().toISOString().split('T')[0]
+      };
+
+      const { enhancedBookingService } = await import('./services/enhanced-booking');
+      const eligibility = await enhancedBookingService.checkAdvancedBookingEligibility(bookingRequest);
+
+      res.json(eligibility);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check eligibility", error: error.message });
+    }
+  });
+
   // Search and Discovery
   app.post("/api/search", requireAuth, async (req, res) => {
     try {
