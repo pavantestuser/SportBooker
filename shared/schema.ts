@@ -204,14 +204,12 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   userMappings: many(userOrganizationMap),
 }));
 
-export const usersRelations = relations(users, ({ one, many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
   bookings: many(bookings),
   orgAdminRoles: many(orgAdmins),
   staffRoles: many(staff),
   organizationMappings: many(userOrganizationMap),
   groupMappings: many(userGroupMap),
-  deviceTokens: many(deviceTokens),
-  appAdminRole: one(appAdmins, { fields: [users.id], references: [appAdmins.userId] }),
 }));
 
 export const facilitiesRelations = relations(facilities, ({ one, many }) => ({
