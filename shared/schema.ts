@@ -241,19 +241,7 @@ export const couponsRelations = relations(coupons, ({ many }) => ({
   bookings: many(bookings),
 }));
 
-export const appAdminsRelations = relations(appAdmins, ({ one, many }) => ({
-  user: one(users, { fields: [appAdmins.userId], references: [users.id] }),
-  permissions: one(appAdminPermissions, { fields: [appAdmins.id], references: [appAdminPermissions.adminId] }),
-  createdOrganizations: many(organizations),
-}));
 
-export const appAdminPermissionsRelations = relations(appAdminPermissions, ({ one }) => ({
-  admin: one(appAdmins, { fields: [appAdminPermissions.adminId], references: [appAdmins.id] }),
-}));
-
-export const deviceTokensRelations = relations(deviceTokens, ({ one }) => ({
-  user: one(users, { fields: [deviceTokens.userId], references: [users.id] }),
-}));
 
 // Insert Schemas
 export const insertAppAdminSchema = createInsertSchema(appAdmins).omit({ id: true, createdAt: true });
