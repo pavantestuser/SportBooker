@@ -272,14 +272,28 @@ export default function Register() {
             </Button>
           </form>
 
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-dark-gray mb-2 flex items-center">
-              <div className="w-2 h-2 bg-sporty-blue rounded-full mr-2"></div>
-              Gender-Based Groups
-            </h4>
-            <p className="text-sm text-gray-600">
-              Users will be automatically added to gender-specific groups for targeted slot access and tournaments.
-            </p>
+          <div className="mt-6 space-y-4">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-semibold text-dark-gray mb-2 flex items-center">
+                <div className="w-2 h-2 bg-sporty-blue rounded-full mr-2"></div>
+                Smart Features
+              </h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Automatic gender-based group assignments</li>
+                <li>• Location-based court discovery</li>
+                <li>• Nearby facility recommendations</li>
+              </ul>
+            </div>
+
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h4 className="font-semibold text-dark-gray mb-2 flex items-center">
+                <MapPin className="h-4 w-4 text-fresh-green mr-2" />
+                Location Benefits
+              </h4>
+              <p className="text-sm text-gray-600">
+                Enable location services to discover courts near you and get personalized recommendations.
+              </p>
+            </div>
           </div>
 
           <div className="mt-6 text-center">
