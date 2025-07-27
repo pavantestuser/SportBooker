@@ -1,0 +1,127 @@
+🎯 Slot Restriction Features — During Slot Creation
+🔧 Admin / Org Admin Configuration Options
+1. Group-Based Access Restriction
+Option: Limit slot booking to a specific user group (e.g., "Students", "VIP Members", "Women", etc.)
+
+Purpose: Enables targeted bookings for categories like corporate, student, or gender-based tournaments.
+
+UI Input: Multi-select dropdown for groups.
+2. Per-User Booking Limit
+Option: Allow only one slot per user per day.
+
+Toggle: ✅ One slot per user per day
+
+Effect: Prevents hoarding; encourages fair play.
+3. Entire Court Booking Option
+Option: Allow user to book entire court for that slot.
+
+Toggle: ✅ Allow full court booking
+
+Effect: Blocks all individual slot bookings for others during that time.
+4. Multiple Slot Combination (Extended Time Booking)
+Option: Allow booking of 2 or more consecutive slots
+
+Input: Max combinable slots (e.g., Max 2 slots in a row)
+
+Effect: Users can reserve extended time without manual booking of each slot.
+
+UI Hint: Show as "Book 5:00–6:00 PM + 6:00–7:00 PM"
+🧠 Rules Summary in Table
+Restriction Type	Input Type	Purpose	UI Suggestion
+Group Restriction	Multi-select group	Restrict visibility	Dropdown list
+One-per-day limit	Toggle	Prevent multiple bookings	Checkbox
+Full court booking	Toggle	Allow private court use	Checkbox
+Extendable booking	Number input	Reserve more time in one booking	Dropdown: “Book multiple” or slider
+✅ Recommendation
+Let org admins define all restrictions during slot creation.
+Store restrictions in a SlotRestriction model/table.
+On user booking screen, check eligibility based on these rules.
+Update backend API to handle logic for combinations and full-court blocks.
+ 
+📲 External Feature: Push Notifications via Firebase Cloud Messaging (FCM)
+Firebase Cloud Messaging (FCM) integration allows real-time push notifications to be sent to users for booking confirmations, reminders, slot updates, cancellations, and more.
+🔔 Use Cases
+- Slot Booking Confirmation
+- Reminder for Upcoming Booking
+- Booking Cancellation Notification
+- Facility Announcements or Updates
+- Custom Alerts by Organization Admins
+⚙️ Integration Overview
+1. Register app with Firebase Console and obtain server key and sender ID.
+2. Add Firebase SDK to the mobile/web app.
+3. Store user device tokens in the backend (linked to user ID).
+4. When certain actions occur (e.g., booking confirmed), trigger FCM server-side API to send the message.
+5. Users receive push notifications on their device, even when app is not active.
+🧱 Backend Flow
+1. Event Trigger (e.g., Booking Created or Cancelled)
+2. Backend fetches FCM token from User table
+3. Sends push notification payload using Firebase Admin SDK or HTTPS endpoint
+4. Firebase delivers the message to the device
+📦 Example Notification Payload
+{
+  "to": "<FCM_TOKEN>",
+  "notification": {
+    "title": "Booking Confirmed",
+    "body": "Your court booking for 5:00–6:00 PM is confirmed.",
+    "click_action": "OPEN_BOOKING_DETAILS"
+  },
+  "data": {
+    "booking_id": "BK123456",
+    "court": "Court A",
+    "date": "2025-07-28"
+  }
+}
+ 
+📈 Booking Flowchart (Text-based View)
+
++------------------+
+|      Start       |
++------------------+
+         |
+         v
++---------------------+
+|   User Logs In      |
++---------------------+
+         |
+         v
++---------------------+
+|   Select Role       |
++---------------------+
+         |
+         v
++----------------------------+
+| View Available Slots       |
++----------------------------+
+         |
+         v
++----------------------------+
+|   Check Slot Restrictions  |
++----------------------------+
+         |
+         v
++---------------------+
+|  Is User Eligible?  |
++---------------------+
+     |           |
+     v           v
++----------------+   +---------------------+
+| Proceed with   |   | Show Error / Block  |
+| Booking        |   +---------------------+
++----------------+
+         |
+         v
++----------------------+
+| Confirm & Make Payment |
++----------------------+
+         |
+         v
++--------------------------+
+|  Send Push Notification  |
+|   via Firebase (FCM)     |
++--------------------------+
+         |
+         v
++----------------------+
+| Booking Completed    |
++----------------------+
+

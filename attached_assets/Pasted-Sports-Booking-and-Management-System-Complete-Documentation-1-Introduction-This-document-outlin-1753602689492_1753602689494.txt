@@ -1,0 +1,79 @@
+Sports Booking and Management System - Complete Documentation
+1. Introduction
+This document outlines the complete design and flow of a Sports Booking and Management System, which supports both public and private organizations. It enables role-based access for different users such as App Admins, Organization Admins, Staff, and Users. The system is designed to be scalable and supports facility and court booking with restrictions, group and section management, and optional multi-tenancy.
+
+It operates on a single database, with logic to support access based on organization type and role assignments. The App Admin table remains logically separated from organization data.
+
+2. Roles and Permissions
+
+- App Admin: Manages the entire platform and creates organizations.
+- Organization Admin: Manages a specific organization.
+- Staff: Manages sections, facilities, and users within an organization.
+- User: Can book slots in public organizations or private organizations they are mapped to.
+
+3. Core Features
+
+- Organization and Role Management (Public and Private)
+- Facility and Court Booking
+- Group and Section Management
+- Slot Booking with Availability Restrictions
+- Multi-role Support for Users
+- Single Database with Access Control Logic
+
+4. Database Schema (Single Database)
+
+1. App_Admin(admin_id, name, email, password_hash, phone)
+
+2. Organization(org_id, name, type['public', 'private'], created_by -> App_Admin.admin_id, is_active)
+
+3. User(user_id, username, full_name, email, password_hash, phone, public_user[bool])
+
+4. Org_Admin(org_admin_id, user_id -> User, org_id -> Organization, is_active)
+
+5. Staff(staff_id, user_id -> User, org_id -> Organization, can_manage_sections, can_manage_facilities, can_manage_users, can_add_slots)
+
+6. User_Organization_Map(id, user_id -> User, org_id -> Organization, role['admin', 'staff', 'member'], is_active)
+
+7. Group(group_id, org_id -> Organization, name, description)
+
+8. User_Group_Map(id, user_id -> User, group_id -> Group)
+
+9. Section(section_id, org_id -> Organization, name, assigned_to_user -> User)
+
+10. Facility(facility_id, org_id -> Organization, name, description)
+
+11. Court(court_id, facility_id -> Facility, name, players_required, available_to_public[bool])
+
+12. Slot(slot_id, court_id -> Court, date, start_time, end_time, restricted_to_once_per_day[bool], max_bookings, price)
+
+13. Booking(booking_id, slot_id -> Slot, user_id -> User, status['booked', 'cancelled', 'completed'], booking_time)
+
+14. Payment(payment_id, booking_id -> Booking, amount, status['pending', 'paid', 'failed'], payment_method, transaction_id)
+
+5. Booking Rules
+
+- A user can book slots for any public organization.
+- A user can book slots for private organizations only if they are mapped via User_Organization_Map.
+- Slot booking is subject to max_bookings and time restrictions.
+
+6. Switch Role Logic
+
+Upon login, if a user has multiple roles, they are presented with an option to choose from:
+- App Admin
+- Organization Admin
+- Staff
+- User (Private/Public)
+
+7. API Overview
+
+- POST /login → Authenticate user
+- GET /switch-role → List available roles for the logged-in user
+- POST /organization → Create organization (App Admin only)
+- GET /organizations → List organizations (filtered by public/private or role)
+- POST /facility → Add facility (Org Admin/Staff)
+- POST /slot → Create slot (Staff)
+- GET /slots → List available slots (based on org and access)
+- POST /book → Book a slot (User)
+- GET /bookings → View bookings (User/Org Admin)
+- POST /payment → Make payment
+- GET /groups → List user groups (Org)
