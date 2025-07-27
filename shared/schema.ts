@@ -294,6 +294,8 @@ export const insertSlotSchema = createInsertSchema(slots).omit({ id: true, creat
 export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true, createdAt: true });
 export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true, createdAt: true, bookingTime: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true });
+export const insertAppAdminPermissionSchema = createInsertSchema(appAdminPermissions).omit({ id: true, createdAt: true });
+export const insertDeviceTokenSchema = createInsertSchema(deviceTokens).omit({ id: true, createdAt: true, lastUsedAt: true });
 
 // Types
 export type InsertAppAdmin = z.infer<typeof insertAppAdminSchema>;
