@@ -164,12 +164,14 @@ export const slotRestrictions = pgTable("slot_restrictions", {
 export const coupons = pgTable("coupons", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   code: text("code").notNull().unique(),
+  description: text("description"),
   type: couponTypeEnum("type").notNull(),
   discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
-  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }).default('0'),
+  minBookingAmount: decimal("min_booking_amount", { precision: 10, scale: 2 }).default('0'),
   usageLimit: integer("usage_limit").default(1),
   usedCount: integer("used_count").default(0),
-  expiryDate: timestamp("expiry_date").notNull(),
+  validFrom: timestamp("valid_from").notNull(),
+  validTo: timestamp("valid_to").notNull(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
