@@ -135,16 +135,6 @@ export const courts = pgTable("courts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Slot Restrictions table
-export const slotRestrictions = pgTable("slot_restrictions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  slotId: varchar("slot_id").references(() => slots.id).notNull(),
-  groupId: varchar("group_id").references(() => groups.id),
-  restrictionType: restrictionTypeEnum("restriction_type").notNull(),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 // Slots table (enhanced with restrictions)
 export const slots = pgTable("slots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -157,7 +147,16 @@ export const slots = pgTable("slots", {
   restrictedToOncePerDay: boolean("restricted_to_once_per_day").default(false),
   allowFullCourtBooking: boolean("allow_full_court_booking").default(false),
   maxCombinableSlots: integer("max_combinable_slots").default(1),
-  restrictionId: varchar("restriction_id").references(() => slotRestrictions.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Slot Restrictions table (moved after slots)
+export const slotRestrictions = pgTable("slot_restrictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slotId: varchar("slot_id").references(() => slots.id).notNull(),
+  groupId: varchar("group_id").references(() => groups.id),
+  restrictionType: restrictionTypeEnum("restriction_type").notNull(),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
