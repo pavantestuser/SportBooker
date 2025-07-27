@@ -138,11 +138,10 @@ export const courts = pgTable("courts", {
 // Slot Restrictions table
 export const slotRestrictions = pgTable("slot_restrictions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  restrictedGroups: text("restricted_groups").array(),
-  onePerUserPerDay: boolean("one_per_user_per_day").default(false),
-  allowFullCourt: boolean("allow_full_court").default(false),
-  maxCombinableSlots: integer("max_combinable_slots").default(1),
+  slotId: varchar("slot_id").references(() => slots.id).notNull(),
+  groupId: varchar("group_id").references(() => groups.id),
+  restrictionType: restrictionTypeEnum("restriction_type").notNull(),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
