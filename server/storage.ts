@@ -27,6 +27,7 @@ export interface IStorage {
   // App Admin management
   getAppAdmin(id: string): Promise<AppAdmin | undefined>;
   getAppAdminByEmail(email: string): Promise<AppAdmin | undefined>;
+  getAppAdmins(): Promise<AppAdmin[]>;
   createAppAdmin(admin: InsertAppAdmin): Promise<AppAdmin>;
 
   // Organization management
