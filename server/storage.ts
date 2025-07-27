@@ -22,6 +22,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserFcmToken(userId: string, fcmToken: string): Promise<void>;
+  updateUserLocation(userId: string, location: { city: string; latitude: string; longitude: string }): Promise<void>;
 
   // App Admin management
   getAppAdmin(id: string): Promise<AppAdmin | undefined>;
