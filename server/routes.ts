@@ -657,71 +657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin Permission Management Routes
-  app.get("/api/admin/permissions/:adminId", requireAuth, requireRole(['app_admin']), async (req, res) => {
-    try {
-      const permissions = await storage.getAppAdminPermissions(req.params.adminId);
-      res.json(permissions || {});
-    } catch (error) {
-      res.status(500).json({ message: "Failed to get admin permissions" });
-    }
-  });
 
-  app.post("/api/admin/permissions", requireAuth, requireRole(['app_admin']), async (req, res) => {
-    try {
-      const permissionData = req.body;
-      const permissions = await storage.createAppAdminPermissions(permissionData);
-      res.json(permissions);
-    } catch (error) {
-      res.status(400).json({ message: "Failed to create admin permissions", error: error.message });
-    }
-  });
-
-  app.put("/api/admin/permissions/:adminId", requireAuth, requireRole(['app_admin']), async (req, res) => {
-    try {
-      const updates = req.body;
-      await storage.updateAppAdminPermissions(req.params.adminId, updates);
-      res.json({ message: "Permissions updated successfully" });
-    } catch (error) {
-      res.status(400).json({ message: "Failed to update admin permissions", error: error.message });
-    }
-  });
-
-  // Device Token Management Routes
-  app.post("/api/device-tokens", requireAuth, async (req, res) => {
-    try {
-      const { fcmToken, deviceType, deviceName } = req.body;
-
-      const token = await storage.createDeviceToken({
-        userId: req.session.userId!,
-        fcmToken,
-        deviceType,
-        deviceName
-      });
-
-      res.json(token);
-    } catch (error) {
-      res.status(400).json({ message: "Failed to register device token", error: error.message });
-    }
-  });
-
-  app.get("/api/device-tokens", requireAuth, async (req, res) => {
-    try {
-      const tokens = await storage.getUserDeviceTokens(req.session.userId!);
-      res.json(tokens);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to get device tokens" });
-    }
-  });
-
-  app.delete("/api/device-tokens/:tokenId", requireAuth, async (req, res) => {
-    try {
-      await storage.deactivateDeviceToken(req.params.tokenId);
-      res.json({ message: "Device token deactivated successfully" });
-    } catch (error) {
-      res.status(400).json({ message: "Failed to deactivate device token" });
-    }
-  });
 
   // Search and Discovery
   app.post("/api/search", requireAuth, async (req, res) => {
