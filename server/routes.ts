@@ -401,6 +401,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User location update
+  app.post("/api/user/location", requireAuth, async (req, res) => {
+    try {
+      const { city, latitude, longitude } = req.body;
+      await storage.updateUserLocation(req.session.userId!, {
+        city,
+        latitude: latitude.toString(),
+        longitude: longitude.toString()
+      });
+      res.json({ message: "Location updated successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update location", error: error.message });
+    }
+  });
+
   // Notifications
   app.post("/api/notifications/send", requireAuth, requireRole(['app_admin', 'org_admin']), async (req, res) => {
     try {
