@@ -14,6 +14,7 @@ import Slots from "@/pages/slots";
 import Booking from "@/pages/booking";
 import Coupons from "@/pages/coupons";
 import Users from "@/pages/users";
+import Search from "@/pages/search";
 import Navigation from "@/components/navigation";
 import Sidebar from "@/components/sidebar";
 
