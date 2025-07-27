@@ -55,7 +55,22 @@ export const users = pgTable("users", {
   phone: text("phone"),
   gender: userGenderEnum("gender"),
   publicUser: boolean("public_user").default(true),
-  fcmToken: text("fcm_token"),
+  city: text("city"),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  fcmToken: text("fcm_token"), // Deprecated - use deviceTokens table
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// DeviceToken table for multi-device FCM support
+export const deviceTokens = pgTable("device_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  fcmToken: text("fcm_token").notNull(),
+  deviceType: varchar("device_type", { length: 50 }), // 'Android', 'iOS', 'Web'
+  deviceName: varchar("device_name", { length: 100 }), // 'iPhone 13', 'Macbook Chrome'
+  lastUsedAt: timestamp("last_used_at").defaultNow(),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
