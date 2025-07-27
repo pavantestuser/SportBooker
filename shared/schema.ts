@@ -14,10 +14,12 @@ export const couponTypeEnum = pgEnum('coupon_type', ['fixed_amount', 'percentage
 // App Admin table
 export const appAdmins = pgTable("app_admins", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).unique(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   phone: text("phone"),
+  superAdmin: boolean("super_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
