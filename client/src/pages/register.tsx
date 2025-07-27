@@ -219,18 +219,6 @@ export default function Register() {
             </Button>
           </form>
 
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-dark-gray mb-2 flex items-center">
-              <div className="w-2 h-2 bg-sporty-blue rounded-full mr-2"></div>
-              Smart Features
-            </h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Automatic gender-based group assignments</li>
-              <li>• Advanced search and booking system</li>
-              <li>• Real-time availability updates</li>
-            </ul>
-          </div>
-
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{" "}
