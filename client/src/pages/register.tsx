@@ -19,14 +19,10 @@ export default function Register() {
     email: "",
     phone: "",
     gender: "",
-    city: "",
-    latitude: "",
-    longitude: "",
     password: "",
     confirmPassword: "",
     acceptTerms: false,
   });
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const { toast } = useToast();
 
   const registerMutation = useMutation({
