@@ -54,6 +54,41 @@ export default function Register() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const getCurrentLocation = () => {
+    setIsGettingLocation(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormData(prev => ({
+            ...prev,
+            latitude: position.coords.latitude.toString(),
+            longitude: position.coords.longitude.toString()
+          }));
+          setIsGettingLocation(false);
+          toast({
+            title: "Location Found",
+            description: "Your GPS coordinates have been captured.",
+          });
+        },
+        (error) => {
+          setIsGettingLocation(false);
+          toast({
+            title: "Location Error",
+            description: "Unable to get your location. Please enter city manually.",
+            variant: "destructive",
+          });
+        }
+      );
+    } else {
+      setIsGettingLocation(false);
+      toast({
+        title: "Location Not Supported",
+        description: "Your browser doesn't support geolocation.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
