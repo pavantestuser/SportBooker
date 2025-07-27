@@ -153,6 +153,10 @@ export class DatabaseStorage implements IStorage {
     return admin || undefined;
   }
 
+  async getAppAdmins(): Promise<AppAdmin[]> {
+    return await db.select().from(appAdmins);
+  }
+
   async createAppAdmin(insertAdmin: InsertAppAdmin): Promise<AppAdmin> {
     const [admin] = await db.insert(appAdmins).values(insertAdmin).returning();
     return admin;
