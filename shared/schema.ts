@@ -314,6 +314,8 @@ export type InsertSlot = z.infer<typeof insertSlotSchema>;
 export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type InsertAppAdminPermission = z.infer<typeof insertAppAdminPermissionSchema>;
+export type InsertDeviceToken = z.infer<typeof insertDeviceTokenSchema>;
 
 export type AppAdmin = typeof appAdmins.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
