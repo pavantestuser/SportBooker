@@ -401,6 +401,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search and Discovery
+  app.post("/api/search", requireAuth, async (req, res) => {
+    try {
+      const { query, city, sport, date, timeSlot, maxDistance, priceRange } = req.body;
+
+      // Perform fuzzy search across courts, facilities, and organizations
+      const results = await storage.performAdvancedSearch({
+        query,
+        city,
+        sport,
+        date,
+        timeSlot,
+        maxDistance: maxDistance ? parseInt(maxDistance) : undefined,
+        priceRange,
+        userId: req.session.userId!
+      });
+
+      res.json({ results });
+    } catch (error) {
+      res.status(500).json({ message: "Search failed", error: error.message });
+    }
+  });
+
+  app.get("/api/nearby", requireAuth, async (req, res) => {
+    try {
+      const { radius = 10 } = req.query;
+      const user = await storage.getUser(req.session.userId!);
+
+      if (!user?.latitude || !user?.longitude) {
+        return res.status(400).json({ message: "User location not available" });
+      }
+
+      const results = await storage.findNearbyCourts(
+        parseFloat(user.latitude),
+        parseFloat(user.longitude),
+        parseInt(radius as string)
+      );
+
+      res.json({ results });
+    } catch (error) {
+      res.status(500).json({ message: "Nearby search failed", error: error.message });
+    }
+  });
+
+  app.get("/api/courts/filter", requireAuth, async (req, res) => {
+    try {
+      const { tags, city, availableOnly } = req.query;
+
+      const courts = await storage.filterCourts({
+        tags: tags ? (tags as string).split(',') : undefined,
+        city: city as string,
+        availableOnly: availableOnly === 'true'
+      });
+
+      res.json(courts);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to filter courts" });
+    }
+  });
+
   // Dashboard metrics
   app.get("/api/dashboard/metrics", requireAuth, requireRole(['app_admin', 'org_admin']), async (req, res) => {
     try {
