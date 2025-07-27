@@ -605,45 +605,6 @@ export class DatabaseStorage implements IStorage {
   private deg2rad(deg: number): number {
     return deg * (Math.PI/180);
   }
-
-  // Device Token management implementation
-  async getUserDeviceTokens(userId: string): Promise<DeviceToken[]> {
-    return await db.select().from(deviceTokens)
-      .where(and(eq(deviceTokens.userId, userId), eq(deviceTokens.isActive, true)))
-      .orderBy(desc(deviceTokens.lastUsedAt));
-  }
-
-  async createDeviceToken(token: InsertDeviceToken): Promise<DeviceToken> {
-    // First, deactivate any existing tokens with the same FCM token
-    await db.update(deviceTokens)
-      .set({ isActive: false })
-      .where(eq(deviceTokens.fcmToken, token.fcmToken));
-
-    // Create new token
-    const [newToken] = await db.insert(deviceTokens).values(token).returning();
-    return newToken;
-  }
-
-  async updateDeviceToken(tokenId: string, updates: Partial<InsertDeviceToken>): Promise<void> {
-    await db.update(deviceTokens)
-      .set({ ...updates, lastUsedAt: new Date() })
-      .where(eq(deviceTokens.id, tokenId));
-  }
-
-  async deactivateDeviceToken(tokenId: string): Promise<void> {
-    await db.update(deviceTokens)
-      .set({ isActive: false })
-      .where(eq(deviceTokens.id, tokenId));
-  }
-
-  async cleanupInactiveTokens(): Promise<void> {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    await db.delete(deviceTokens)
-      .where(and(
-        eq(deviceTokens.isActive, false),
-        lte(deviceTokens.lastUsedAt, thirtyDaysAgo)
-      ));
-  }
 }
 
 export const storage = new DatabaseStorage();
