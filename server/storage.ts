@@ -162,21 +162,6 @@ export class DatabaseStorage implements IStorage {
     return admin;
   }
 
-  // App Admin Permissions implementation
-  async getAppAdminPermissions(adminId: string): Promise<AppAdminPermission | undefined> {
-    const [permissions] = await db.select().from(appAdminPermissions).where(eq(appAdminPermissions.adminId, adminId));
-    return permissions || undefined;
-  }
-
-  async createAppAdminPermissions(permissions: InsertAppAdminPermission): Promise<AppAdminPermission> {
-    const [newPermissions] = await db.insert(appAdminPermissions).values(permissions).returning();
-    return newPermissions;
-  }
-
-  async updateAppAdminPermissions(adminId: string, permissions: Partial<InsertAppAdminPermission>): Promise<void> {
-    await db.update(appAdminPermissions).set(permissions).where(eq(appAdminPermissions.adminId, adminId));
-  }
-
   // Organization management
   async getOrganization(id: string): Promise<Organization | undefined> {
     const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
