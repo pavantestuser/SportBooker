@@ -30,18 +30,6 @@ export interface IStorage {
   getAppAdmins(): Promise<AppAdmin[]>;
   createAppAdmin(admin: InsertAppAdmin): Promise<AppAdmin>;
 
-  // App Admin Permissions
-  getAppAdminPermissions(adminId: string): Promise<AppAdminPermission | undefined>;
-  createAppAdminPermissions(permissions: InsertAppAdminPermission): Promise<AppAdminPermission>;
-  updateAppAdminPermissions(adminId: string, permissions: Partial<InsertAppAdminPermission>): Promise<void>;
-
-  // Device Token management
-  getUserDeviceTokens(userId: string): Promise<DeviceToken[]>;
-  createDeviceToken(token: InsertDeviceToken): Promise<DeviceToken>;
-  updateDeviceToken(tokenId: string, updates: Partial<InsertDeviceToken>): Promise<void>;
-  deactivateDeviceToken(tokenId: string): Promise<void>;
-  cleanupInactiveTokens(): Promise<void>;
-
   // Organization management
   getOrganization(id: string): Promise<Organization | undefined>;
   getOrganizations(): Promise<Organization[]>;
