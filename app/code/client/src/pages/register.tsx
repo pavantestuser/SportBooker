@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Dumbbell, UserPlus, Navigation, MapPin } from "lucide-react";
+import { Dumbbell, UserPlus, MapPin, Navigation } from "lucide-react";
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -19,10 +19,14 @@ export default function Register() {
     email: "",
     phone: "",
     gender: "",
+    city: "",
+    latitude: "",
+    longitude: "",
     password: "",
     confirmPassword: "",
     acceptTerms: false,
   });
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const { toast } = useToast();
 
   const registerMutation = useMutation({
@@ -32,10 +36,10 @@ export default function Register() {
     },
     onSuccess: (data) => {
       toast({
-        title: "Registration Successful! 🎉",
-        description: "Account created! Let's set up your location to find nearby courts.",
+        title: "Registration Successful",
+        description: "Your account has been created. Please sign in to continue.",
       });
-      setLocation("/location-setup");
+      setLocation("/");
     },
     onError: (error: any) => {
       toast({
@@ -50,7 +54,40 @@ export default function Register() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-
+  const getCurrentLocation = () => {
+    setIsGettingLocation(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormData(prev => ({
+            ...prev,
+            latitude: position.coords.latitude.toString(),
+            longitude: position.coords.longitude.toString()
+          }));
+          setIsGettingLocation(false);
+          toast({
+            title: "Location Found",
+            description: "Your GPS coordinates have been captured.",
+          });
+        },
+        (error) => {
+          setIsGettingLocation(false);
+          toast({
+            title: "Location Error",
+            description: "Unable to get your location. Please enter city manually.",
+            variant: "destructive",
+          });
+        }
+      );
+    } else {
+      setIsGettingLocation(false);
+      toast({
+        title: "Location Not Supported",
+        description: "Your browser doesn't support geolocation.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +255,16 @@ export default function Register() {
               {registerMutation.isPending ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
+
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h4 className="font-semibold text-dark-gray mb-2 flex items-center">
+              <div className="w-2 h-2 bg-sporty-blue rounded-full mr-2"></div>
+              Gender-Based Groups
+            </h4>
+            <p className="text-sm text-gray-600">
+              Users will be automatically added to gender-specific groups for targeted slot access and tournaments.
+            </p>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">

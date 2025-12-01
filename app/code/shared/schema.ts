@@ -10,6 +10,7 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'staff', 'member']);
 export const bookingStatusEnum = pgEnum('booking_status', ['booked', 'cancelled', 'completed']);
 export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'paid', 'failed']);
 export const couponTypeEnum = pgEnum('coupon_type', ['fixed_amount', 'percentage', 'free_booking', 'conditional']);
+export const restrictionTypeEnum = pgEnum('restriction_type', ['group_only', 'one_per_day', 'full_court', 'combinable']);
 
 // App Admin table
 export const appAdmins = pgTable("app_admins", {
@@ -21,8 +22,6 @@ export const appAdmins = pgTable("app_admins", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-
-
 // Organizations table
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -30,10 +29,14 @@ export const organizations = pgTable("organizations", {
   type: organizationTypeEnum("type").notNull(),
   createdBy: varchar("created_by").references(() => appAdmins.id),
   isActive: boolean("is_active").default(true),
+  city: text("city"),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  tags: text("tags").array(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Users table (enhanced with gender)
+// Users table (enhanced with gender and location)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
@@ -46,11 +49,9 @@ export const users = pgTable("users", {
   city: text("city"),
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
-  fcmToken: text("fcm_token"), // Deprecated - use deviceTokens table
+  fcmToken: text("fcm_token"),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
-
 
 // Organization Admins
 export const orgAdmins = pgTable("org_admins", {
@@ -116,6 +117,10 @@ export const facilities = pgTable("facilities", {
   orgId: varchar("org_id").references(() => organizations.id).notNull(),
   name: text("name").notNull(),
   description: text("description"),
+  city: text("city"),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  tags: text("tags").array(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -126,17 +131,7 @@ export const courts = pgTable("courts", {
   name: text("name").notNull(),
   playersRequired: integer("players_required").default(1),
   availableToPublic: boolean("available_to_public").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Slot Restrictions table
-export const slotRestrictions = pgTable("slot_restrictions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  restrictedGroups: text("restricted_groups").array(),
-  onePerUserPerDay: boolean("one_per_user_per_day").default(false),
-  allowFullCourt: boolean("allow_full_court").default(false),
-  maxCombinableSlots: integer("max_combinable_slots").default(1),
+  tags: text("tags").array(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -149,7 +144,19 @@ export const slots = pgTable("slots", {
   endTime: text("end_time").notNull(), // HH:MM format
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   maxBookings: integer("max_bookings").default(1),
-  restrictionId: varchar("restriction_id").references(() => slotRestrictions.id),
+  restrictedToOncePerDay: boolean("restricted_to_once_per_day").default(false),
+  allowFullCourtBooking: boolean("allow_full_court_booking").default(false),
+  maxCombinableSlots: integer("max_combinable_slots").default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Slot Restrictions table (moved after slots)
+export const slotRestrictions = pgTable("slot_restrictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slotId: varchar("slot_id").references(() => slots.id).notNull(),
+  groupId: varchar("group_id").references(() => groups.id),
+  restrictionType: restrictionTypeEnum("restriction_type").notNull(),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -157,12 +164,14 @@ export const slots = pgTable("slots", {
 export const coupons = pgTable("coupons", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   code: text("code").notNull().unique(),
+  description: text("description"),
   type: couponTypeEnum("type").notNull(),
   discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
-  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }).default('0'),
+  minBookingAmount: decimal("min_booking_amount", { precision: 10, scale: 2 }).default('0'),
   usageLimit: integer("usage_limit").default(1),
   usedCount: integer("used_count").default(0),
-  expiryDate: timestamp("expiry_date").notNull(),
+  validFrom: timestamp("valid_from").notNull(),
+  validTo: timestamp("valid_to").notNull(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -174,7 +183,7 @@ export const bookings = pgTable("bookings", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   status: bookingStatusEnum("status").default('booked'),
   isFullCourt: boolean("is_full_court").default(false),
-  consecutiveSlots: text("consecutive_slots").array(),
+  combinedSlots: text("combined_slots").array(),
   couponId: varchar("coupon_id").references(() => coupons.id),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default('0'),
   bookingTime: timestamp("booking_time").defaultNow(),
@@ -185,9 +194,10 @@ export const bookings = pgTable("bookings", {
 export const payments = pgTable("payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   bookingId: varchar("booking_id").references(() => bookings.id).notNull(),
-  originalAmount: decimal("original_amount", { precision: 10, scale: 2 }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default('0'),
   finalAmount: decimal("final_amount", { precision: 10, scale: 2 }).notNull(),
+  couponId: varchar("coupon_id").references(() => coupons.id),
   status: paymentStatusEnum("status").default('pending'),
   paymentMethod: text("payment_method"),
   transactionId: text("transaction_id"),
@@ -238,8 +248,6 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
 export const couponsRelations = relations(coupons, ({ many }) => ({
   bookings: many(bookings),
 }));
-
-
 
 // Insert Schemas
 export const insertAppAdminSchema = createInsertSchema(appAdmins).omit({ id: true, createdAt: true });

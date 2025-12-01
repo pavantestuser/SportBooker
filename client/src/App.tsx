@@ -14,6 +14,8 @@ import Slots from "@/pages/slots";
 import Booking from "@/pages/booking";
 import Coupons from "@/pages/coupons";
 import Users from "@/pages/users";
+import Search from "@/pages/search";
+import LocationSetupPage from "@/pages/location-setup";
 import Navigation from "@/components/navigation";
 import Sidebar from "@/components/sidebar";
 
@@ -63,6 +65,8 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/dashboard" component={Dashboard} />
+        <Route path="/location-setup" component={LocationSetupPage} />
+        <Route path="/search" component={Search} />
         <Route path="/organizations" component={Organizations} />
         <Route path="/facilities" component={Facilities} />
         <Route path="/slots" component={Slots} />

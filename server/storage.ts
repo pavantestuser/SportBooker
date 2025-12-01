@@ -22,10 +22,12 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserFcmToken(userId: string, fcmToken: string): Promise<void>;
+  updateUserLocation(userId: string, location: { city: string; latitude: string; longitude: string }): Promise<void>;
 
   // App Admin management
   getAppAdmin(id: string): Promise<AppAdmin | undefined>;
   getAppAdminByEmail(email: string): Promise<AppAdmin | undefined>;
+  getAppAdmins(): Promise<AppAdmin[]>;
   createAppAdmin(admin: InsertAppAdmin): Promise<AppAdmin>;
 
   // Organization management
@@ -86,6 +88,24 @@ export interface IStorage {
   getPaymentByBooking(bookingId: string): Promise<Payment | undefined>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePaymentStatus(id: string, status: 'pending' | 'paid' | 'failed', transactionId?: string): Promise<void>;
+
+  // Search and Discovery
+  performAdvancedSearch(params: {
+    query?: string;
+    city?: string;
+    sport?: string;
+    date?: string;
+    timeSlot?: string;
+    maxDistance?: number;
+    priceRange?: string;
+    userId: string;
+  }): Promise<any[]>;
+  findNearbyCourts(latitude: number, longitude: number, radius: number): Promise<any[]>;
+  filterCourts(params: {
+    tags?: string[];
+    city?: string;
+    availableOnly?: boolean;
+  }): Promise<Court[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -114,6 +134,14 @@ export class DatabaseStorage implements IStorage {
     await db.update(users).set({ fcmToken }).where(eq(users.id, userId));
   }
 
+  async updateUserLocation(userId: string, location: { city: string; latitude: string; longitude: string }): Promise<void> {
+    await db.update(users).set({
+      city: location.city,
+      latitude: location.latitude,
+      longitude: location.longitude
+    }).where(eq(users.id, userId));
+  }
+
   // App Admin management
   async getAppAdmin(id: string): Promise<AppAdmin | undefined> {
     const [admin] = await db.select().from(appAdmins).where(eq(appAdmins.id, id));
@@ -123,6 +151,10 @@ export class DatabaseStorage implements IStorage {
   async getAppAdminByEmail(email: string): Promise<AppAdmin | undefined> {
     const [admin] = await db.select().from(appAdmins).where(eq(appAdmins.email, email));
     return admin || undefined;
+  }
+
+  async getAppAdmins(): Promise<AppAdmin[]> {
+    return await db.select().from(appAdmins);
   }
 
   async createAppAdmin(insertAdmin: InsertAppAdmin): Promise<AppAdmin> {
@@ -394,10 +426,184 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePaymentStatus(id: string, status: 'pending' | 'paid' | 'failed', transactionId?: string): Promise<void> {
-    await db.update(payments).set({ 
-      status, 
-      ...(transactionId && { transactionId }) 
+    await db.update(payments).set({
+      status,
+      ...(transactionId && { transactionId })
     }).where(eq(payments.id, id));
+  }
+
+  // Search and Discovery implementations
+  async performAdvancedSearch(params: {
+    query?: string;
+    city?: string;
+    sport?: string;
+    date?: string;
+    timeSlot?: string;
+    maxDistance?: number;
+    priceRange?: string;
+    userId: string;
+  }): Promise<any[]> {
+    const results: any[] = [];
+
+    // Search organizations
+    if (params.query || params.city) {
+      const orgQuery = db.select().from(organizations);
+      const orgs = await orgQuery;
+
+      orgs.forEach(org => {
+        if (this.matchesSearch(org.name, params.query) ||
+            this.matchesSearch(org.city, params.city)) {
+          results.push({
+            id: org.id,
+            type: 'organization',
+            name: org.name,
+            description: `${org.type} organization`,
+            city: org.city,
+            tags: org.tags || []
+          });
+        }
+      });
+    }
+
+    // Search facilities
+    const facilityQuery = db.select().from(facilities);
+    const facilitiesData = await facilityQuery;
+
+    facilitiesData.forEach(facility => {
+      if (this.matchesSearch(facility.name, params.query) ||
+          this.matchesSearch(facility.city, params.city)) {
+        results.push({
+          id: facility.id,
+          type: 'facility',
+          name: facility.name,
+          description: facility.description || 'Sports facility',
+          city: facility.city,
+          tags: facility.tags || []
+        });
+      }
+    });
+
+    // Search courts
+    const courtQuery = db.select({
+      id: courts.id,
+      name: courts.name,
+      facilityId: courts.facilityId,
+      tags: courts.tags,
+      facilityName: facilities.name,
+      facilityCity: facilities.city
+    }).from(courts).leftJoin(facilities, eq(courts.facilityId, facilities.id));
+
+    const courtsData = await courtQuery;
+
+    courtsData.forEach(court => {
+      if (this.matchesSearch(court.name, params.query) ||
+          this.matchesSearch(court.facilityCity, params.city) ||
+          this.matchesSport(court.tags, params.sport)) {
+        results.push({
+          id: court.id,
+          type: 'court',
+          name: court.name,
+          description: `Court at ${court.facilityName}`,
+          city: court.facilityCity,
+          tags: court.tags || []
+        });
+      }
+    });
+
+    return results;
+  }
+
+  async findNearbyCourts(latitude: number, longitude: number, radius: number): Promise<any[]> {
+    // Simple distance calculation - in production, use spatial indexing
+    const facilitiesData = await db.select().from(facilities);
+    const nearbyCourts: any[] = [];
+
+    for (const facility of facilitiesData) {
+      if (facility.latitude && facility.longitude) {
+        const distance = this.calculateDistance(
+          latitude, longitude,
+          parseFloat(facility.latitude), parseFloat(facility.longitude)
+        );
+
+        if (distance <= radius) {
+          const courtsInFacility = await db.select()
+            .from(courts)
+            .where(eq(courts.facilityId, facility.id));
+
+          courtsInFacility.forEach(court => {
+            nearbyCourts.push({
+              id: court.id,
+              type: 'court',
+              name: court.name,
+              description: `Court at ${facility.name}`,
+              city: facility.city,
+              distance,
+              tags: court.tags || []
+            });
+          });
+        }
+      }
+    }
+
+    return nearbyCourts.sort((a, b) => a.distance - b.distance);
+  }
+
+  async filterCourts(params: {
+    tags?: string[];
+    city?: string;
+    availableOnly?: boolean;
+  }): Promise<Court[]> {
+    let query = db.select().from(courts);
+
+    if (params.city) {
+      query = query.leftJoin(facilities, eq(courts.facilityId, facilities.id));
+    }
+
+    const courtsData = await query;
+
+    return courtsData.filter(court => {
+      if (params.tags && court.tags) {
+        const courtTags = court.tags || [];
+        const hasMatchingTag = params.tags.some(tag =>
+          courtTags.some(courtTag =>
+            courtTag.toLowerCase().includes(tag.toLowerCase())
+          )
+        );
+        if (!hasMatchingTag) return false;
+      }
+
+      return true;
+    });
+  }
+
+  // Helper methods
+  private matchesSearch(text: string | null, searchTerm?: string): boolean {
+    if (!searchTerm) return true;
+    if (!text) return false;
+    return text.toLowerCase().includes(searchTerm.toLowerCase());
+  }
+
+  private matchesSport(tags: string[] | null, sport?: string): boolean {
+    if (!sport) return true;
+    if (!tags) return false;
+    return tags.some(tag => tag.toLowerCase().includes(sport.toLowerCase()));
+  }
+
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = this.deg2rad(lat2 - lat1);
+    const dLon = this.deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const d = R * c; // Distance in km
+    return d;
+  }
+
+  private deg2rad(deg: number): number {
+    return deg * (Math.PI/180);
   }
 }
 

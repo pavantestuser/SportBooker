@@ -12,10 +12,12 @@ import {
   Layers,
   CreditCard,
   Bell,
+  Search,
 } from "lucide-react";
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3, path: "/dashboard", roles: ["app_admin", "org_admin", "staff", "user"] },
+  { id: "search", label: "Search & Discovery", icon: Search, path: "/search", roles: ["app_admin", "org_admin", "staff", "user"] },
   { id: "organizations", label: "Organizations", icon: Building, path: "/organizations", roles: ["app_admin", "org_admin"] },
   { id: "facilities", label: "Facilities & Courts", icon: MapPin, path: "/facilities", roles: ["app_admin", "org_admin", "staff"] },
   { id: "slots", label: "Slot Management", icon: Calendar, path: "/slots", roles: ["app_admin", "org_admin", "staff"] },

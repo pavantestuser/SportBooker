@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import session from "express-session";
+import MemoryStore from "memorystore";
 import { insertUserSchema, insertOrganizationSchema, insertFacilitySchema, insertCourtSchema, insertSlotSchema, insertCouponSchema, insertBookingSchema, insertSlotRestrictionSchema } from "@shared/schema";
 import { authService } from "./services/auth";
 import { bookingService } from "./services/booking";
@@ -18,20 +19,34 @@ declare module 'express-session' {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Session configuration
+  // Session configuration with MemoryStore
+  const MemoryStoreSession = MemoryStore(session);
+
   app.use(session({
     secret: process.env.SESSION_SECRET || 'sports-booking-secret-key',
+    store: new MemoryStoreSession({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    }),
     resave: false,
     saveUninitialized: false,
+    rolling: false, // Don't reset session expiry on each request
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax' // Changed to lax for better compatibility
+    },
+    name: 'sportbook.sid' // Custom session name
   }));
 
   // Authentication middleware
   const requireAuth = (req: any, res: any, next: any) => {
+    console.log('Auth check - Session:', {
+      sessionId: req.sessionID,
+      userId: req.session.userId,
+      hasSession: !!req.session
+    });
+
     if (!req.session.userId) {
       return res.status(401).json({ message: "Authentication required" });
     }
@@ -48,11 +63,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
   };
 
+  // Route to make existing user an app admin
+  app.post("/api/setup/user-to-admin", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Find the user
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if this user is already an app admin
+      const existingAdmins = await storage.getAppAdmins();
+      const isAlreadyAdmin = existingAdmins.some(admin => admin.email === user.email);
+
+      if (isAlreadyAdmin) {
+        return res.status(400).json({ message: "User is already an app admin" });
+      }
+
+      // Create app admin record using user data
+      const admin = await storage.createAppAdmin({
+        name: user.fullName,
+        email: user.email,
+        passwordHash: user.passwordHash,
+        phone: user.phone
+      });
+
+      res.json({
+        message: "User promoted to app admin successfully",
+        admin: {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        message: "Failed to promote user to app admin",
+        error: error.message
+      });
+    }
+  });
+
+  // Setup route for creating first app admin (one-time use)
+  app.post("/api/setup/app-admin", async (req, res) => {
+    try {
+      const { name, email, password, phone } = req.body;
+
+      // Check if any app admin already exists
+      const existingAdmins = await storage.getAppAdmins?.();
+      if (existingAdmins && existingAdmins.length > 0) {
+        return res.status(400).json({
+          message: "Setup already completed. App admin exists."
+        });
+      }
+
+      // Validate input
+      if (!name || !email || !password) {
+        return res.status(400).json({
+          message: "Name, email, and password are required"
+        });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Create app admin
+      const admin = await storage.createAppAdmin({
+        name,
+        email,
+        passwordHash,
+        phone
+      });
+
+      res.json({
+        message: "App admin created successfully",
+        admin: {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        message: "Failed to create app admin",
+        error: error.message
+      });
+    }
+  });
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV
+    });
+  });
+
   // Auth routes
   app.post("/api/register", async (req, res) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
-      
+      // Extract password from request body before parsing with schema
+      const { password, ...bodyWithoutPassword } = req.body;
+      const userData = insertUserSchema.parse(bodyWithoutPassword);
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
@@ -60,21 +180,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Hash password
-      const passwordHash = await bcrypt.hash(userData.password, 10);
-      
+      const passwordHash = await bcrypt.hash(password || userData.passwordHash, 10);
+
       const user = await storage.createUser({
         ...userData,
-        passwordHash,
-        password: undefined
+        passwordHash
       });
 
       // Auto-add to gender-based group if organization context provided
       if (req.body.orgId && userData.gender && userData.gender !== 'prefer_not_to_say') {
         const genderGroups = await storage.getGroupsByOrg(req.body.orgId);
-        const genderGroup = genderGroups.find(g => 
+        const genderGroup = genderGroups.find(g =>
           g.name.toLowerCase().includes(userData.gender?.toLowerCase() || '')
         );
-        
+
         if (genderGroup) {
           await storage.addUserToGroup({
             userId: user.id,
@@ -83,7 +202,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ message: "User registered successfully", userId: user.id });
+      // Auto-login the user after registration
+      const roles = await storage.getUserRoles(user.id);
+      req.session.userId = user.id;
+      req.session.currentRole = roles[0]?.role || 'user';
+      req.session.currentOrgId = roles[0]?.orgId;
+
+      // Save session and respond
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error after registration:', err);
+          return res.json({ message: "User registered successfully but login failed", userId: user.id });
+        }
+
+        res.json({
+          message: "User registered successfully",
+          userId: user.id,
+          user: { id: user.id, username: user.username, fullName: user.fullName, email: user.email },
+          autoLogin: true
+        });
+      });
     } catch (error) {
       res.status(400).json({ message: "Registration failed", error: error.message });
     }
@@ -104,13 +242,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const roles = await storage.getUserRoles(user.id);
-      
+
       req.session.userId = user.id;
       req.session.currentRole = roles[0]?.role || 'user';
       req.session.currentOrgId = roles[0]?.orgId;
 
-      res.json({ 
-        message: "Login successful", 
+      console.log('Login successful - Session set:', {
+        sessionId: req.sessionID,
+        userId: req.session.userId,
+        currentRole: req.session.currentRole
+      });
+
+      res.json({
+        message: "Login successful",
         user: { id: user.id, username: user.username, fullName: user.fullName, email: user.email },
         roles,
         currentRole: req.session.currentRole
@@ -397,6 +541,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "FCM token updated successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to update FCM token" });
+    }
+  });
+
+  // User location update
+  app.post("/api/user/location", requireAuth, async (req, res) => {
+    try {
+      const { city, latitude, longitude } = req.body;
+      await storage.updateUserLocation(req.session.userId!, {
+        city,
+        latitude: latitude.toString(),
+        longitude: longitude.toString()
+      });
+      res.json({ message: "Location updated successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update location", error: error.message });
+    }
+  });
+
+  // Notifications
+  app.post("/api/notifications/send", requireAuth, requireRole(['app_admin', 'org_admin']), async (req, res) => {
+    try {
+      const { userIds, title, body, data } = req.body;
+
+      const notifications = [];
+      for (const userId of userIds) {
+        const user = await storage.getUser(userId);
+        if (user?.fcmToken) {
+          await firebaseService.sendNotification(user.fcmToken, {
+            title,
+            body,
+            data: data || {}
+          });
+          notifications.push({ userId, status: 'sent' });
+        } else {
+          notifications.push({ userId, status: 'no_token' });
+        }
+      }
+
+      res.json({ message: "Notifications processed", results: notifications });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send notifications", error: error.message });
+    }
+  });
+
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      // In a real app, this would fetch user's notification history from database
+      const notifications = [
+        {
+          id: "1",
+          title: "Booking Confirmed",
+          body: "Your court booking for today at 6:00 PM is confirmed.",
+          timestamp: new Date().toISOString(),
+          read: false,
+          type: "booking_confirmed"
+        },
+        {
+          id: "2",
+          title: "New Facility Available",
+          body: "Check out the new tennis courts near your location!",
+          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          read: true,
+          type: "facility_update"
+        }
+      ];
+
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Enhanced booking with restrictions
+  app.post("/api/bookings/advanced", requireAuth, async (req, res) => {
+    try {
+      const { slotId, isFullCourt, consecutiveSlots } = req.body;
+
+      const bookingRequest = {
+        userId: req.session.userId!,
+        slotId,
+        isFullCourt: isFullCourt || false,
+        consecutiveSlots: consecutiveSlots || [],
+        requestedDate: new Date().toISOString().split('T')[0]
+      };
+
+      const { enhancedBookingService } = await import('./services/enhanced-booking');
+      const booking = await enhancedBookingService.processAdvancedBooking(bookingRequest);
+
+      res.json({ booking, message: "Advanced booking created successfully" });
+    } catch (error) {
+      res.status(400).json({ message: "Advanced booking failed", error: error.message });
+    }
+  });
+
+  // Check booking eligibility
+  app.post("/api/bookings/check-eligibility", requireAuth, async (req, res) => {
+    try {
+      const { slotId, isFullCourt, consecutiveSlots } = req.body;
+
+      const bookingRequest = {
+        userId: req.session.userId!,
+        slotId,
+        isFullCourt: isFullCourt || false,
+        consecutiveSlots: consecutiveSlots || [],
+        requestedDate: new Date().toISOString().split('T')[0]
+      };
+
+      const { enhancedBookingService } = await import('./services/enhanced-booking');
+      const eligibility = await enhancedBookingService.checkAdvancedBookingEligibility(bookingRequest);
+
+      res.json(eligibility);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check eligibility", error: error.message });
+    }
+  });
+
+
+
+  // Search and Discovery
+  app.post("/api/search", requireAuth, async (req, res) => {
+    try {
+      const { query, city, sport, date, timeSlot, maxDistance, priceRange } = req.body;
+
+      // Perform fuzzy search across courts, facilities, and organizations
+      const results = await storage.performAdvancedSearch({
+        query,
+        city,
+        sport,
+        date,
+        timeSlot,
+        maxDistance: maxDistance ? parseInt(maxDistance) : undefined,
+        priceRange,
+        userId: req.session.userId!
+      });
+
+      res.json({ results });
+    } catch (error) {
+      res.status(500).json({ message: "Search failed", error: error.message });
+    }
+  });
+
+  app.get("/api/nearby", requireAuth, async (req, res) => {
+    try {
+      const { radius = 10 } = req.query;
+      const user = await storage.getUser(req.session.userId!);
+
+      if (!user?.latitude || !user?.longitude) {
+        return res.status(400).json({ message: "User location not available" });
+      }
+
+      const results = await storage.findNearbyCourts(
+        parseFloat(user.latitude),
+        parseFloat(user.longitude),
+        parseInt(radius as string)
+      );
+
+      res.json({ results });
+    } catch (error) {
+      res.status(500).json({ message: "Nearby search failed", error: error.message });
+    }
+  });
+
+  app.get("/api/courts/filter", requireAuth, async (req, res) => {
+    try {
+      const { tags, city, availableOnly } = req.query;
+
+      const courts = await storage.filterCourts({
+        tags: tags ? (tags as string).split(',') : undefined,
+        city: city as string,
+        availableOnly: availableOnly === 'true'
+      });
+
+      res.json(courts);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to filter courts" });
     }
   });
 
